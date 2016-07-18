@@ -5,7 +5,7 @@ License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 // ==UserScript==
-// @name         Slither.io-bot
+// @name         Slither.io-bot-custom
 // @namespace    http://slither.io/
 // @version      1.2.9
 // @description  Slither.io bot
@@ -185,12 +185,21 @@ var canvasUtil = window.canvasUtil = (function() {
             // Scaling ratio
             if (window.gsc) {
                 window.gsc *= Math.pow(0.9, e.wheelDelta / -120 || e.detail / 2 || 0);
+                window.desired_gsc = window.gsc;
             }
         },
 
         // Restores zoom to the default value.
         resetZoom: function() {
             window.gsc = 0.9;
+            window.desired_gsc = 0.9;
+        },
+
+        // Maintains Zoom
+        maintainZoom: function() {
+            if (window.desired_gsc !== undefined) {
+                window.gsc = window.desired_gsc;
+            }
         },
 
         // Sets background to the given image URL.
@@ -350,6 +359,7 @@ var canvasUtil = window.canvasUtil = (function() {
 
 var bot = window.bot = (function() {
     return {
+        isCustomBot: false,
         isBotRunning: false,
         isBotEnabled: true,
         lookForFood: false,
@@ -868,7 +878,8 @@ var bot = window.bot = (function() {
         // Main bot
         go: function() {
             bot.every();
-
+            
+            bot.testTrack();
             if (bot.checkCollision()) {
                 bot.lookForFood = false;
                 if (bot.foodTimeout) {
@@ -885,6 +896,80 @@ var bot = window.bot = (function() {
                 window.setAcceleration(bot.foodAccel());
             }
         },
+
+
+////////////////  custom functions ///////
+
+        //follow head of nearest enemy plus some offset to get before enemy's head
+        customTrack: function(pt){
+          coordinates = {
+            //  x: pt.xx,
+            //  y: pt.yy,
+              x: pt.xx + Math.cos(ang)*100,
+              y: pt.yy + Math.sin(ang)*100,
+              radius: pt.radius
+          };
+          if (window.visualDebugging) {
+              canvasUtil.drawCircle(canvasUtil.circle(
+                  coordinates.x,
+                  coordinates.y,
+                  coordinates.radius),
+              'yellow', false);
+          }
+          canvasUtil.setMouseCoordinates(canvasUtil.mapToMouse(coordinates));
+        },
+        
+        testTrack: function(){
+            coordinates = {
+                x: window.snake.xx + Math.cos(window.snake.ang)*100,
+                y: window.snake.yy + Math.sin(window.snake.ang)*100,
+                radius: bot.getSnakeWidth(window.snake.sc)/2
+            };
+            if (window.visualDebugging) {
+              canvasUtil.drawCircle(canvasUtil.circle(
+                  coordinates.x,
+                  coordinates.y,
+                  coordinates.radius),
+              'yellow', false);
+            }
+        },
+            
+
+
+        getSnakeHeads: function() {
+
+            bot.snakeHeads = [];
+            for (var snake = 0, ls = window.snakes.length; snake < ls; snake ++) {
+              enemyHeadPoint = undefined;
+
+              if (window.snakes[snake].id !== window.snake.id &&
+                  window.snakes[snake].alive_amt === 1) {
+                  enemyHeadPoint = {
+                      xx: window.snakes[snake].xx,
+                      yy: window.snakes[snake].yy,
+                      ang: window.snakes[snake].ang,
+                      snake: snake,
+                      radius: bot.getSnakeWidth(window.snakes[snake].sc)/2
+                  };
+                  canvasUtil.getDistance2FromSnake(enemyHeadPoint);
+              }
+              if (enemyHeadPoint !== undefined) {
+                  bot.snakeHeads.push(enemyHeadPoint);
+              }
+            }
+            bot.snakeHeads.sort(bot.sortDistance);
+        },
+
+        // Main bot custom
+        goCustom: function() {
+            bot.every();
+            bot.getSnakeHeads();
+            if(bot.snakeHeads[0] !== undefined){
+                bot.customTrack(bot.snakeHeads[0]);
+            }
+            //window.setAcceleration(1);
+        },
+////////////////// end //////////////////
 
         // Timer version of food check
         foodTimer: function() {
@@ -909,16 +994,6 @@ var userInterface = window.userInterface = (function() {
 
     window.oef = function() {};
     window.redraw = function() {};
-
-    // Modify the redraw()-function to remove the zoom altering code
-    // and replace b.globalCompositeOperation = "lighter"; to "hard-light".
-    var original_redraw_string = original_redraw.toString();
-    var new_redraw_string = original_redraw_string.replace(
-        'gsc!=f&&(gsc<f?(gsc+=2E-4,gsc>=f&&(gsc=f)):(gsc-=2E-4,gsc<=f&&(gsc=f)))', '');
-    new_redraw_string = new_redraw_string.replace(/b.globalCompositeOperation="lighter"/gi,
-        'b.globalCompositeOperation="hard-light"');
-    var new_redraw = new Function(new_redraw_string.substring(
-        new_redraw_string.indexOf('{') + 1, new_redraw_string.lastIndexOf('}')));
 
     return {
         overlays: {},
@@ -1090,6 +1165,10 @@ var userInterface = window.userInterface = (function() {
             // Original slither.io onkeydown function + whatever is under it
             original_keydown(e);
             if (window.playing) {
+                // Letter `C` to toggle custom bot
+                if(e.keyCode === 67) {
+                    bot.isCustomBot = !bot.isCustomBot;
+                }
                 // Letter `T` to toggle bot
                 if (e.keyCode === 84) {
                     bot.isBotEnabled = !bot.isBotEnabled;
@@ -1249,6 +1328,7 @@ var userInterface = window.userInterface = (function() {
 
             oContent.push('version: ' + GM_info.script.version);
             oContent.push('[T / Right click] bot: ' + ht(bot.isBotEnabled));
+            oContent.push('[C] custom bot: ' + ht(bot.isCustomBot));
             oContent.push('[O] mobile rendering: ' + ht(window.mobileRender));
             oContent.push('[A/S] radius multiplier: ' + bot.opt.radiusMult);
             oContent.push('[D] quick radius change ' +
@@ -1315,15 +1395,18 @@ var userInterface = window.userInterface = (function() {
 
         oefTimer: function() {
             var start = Date.now();
-            // Original slither.io oef function + whatever is under it
+            canvasUtil.maintainZoom();
             original_oef();
-            // Modified slither.io redraw function
-            new_redraw();
+            original_redraw();
 
             if (window.playing && bot.isBotEnabled && window.snake !== null) {
                 window.onmousemove = function() {};
                 bot.isBotRunning = true;
-                bot.go();
+                if ( bot.isCustomBot ) {
+                    bot.goCustom();                    
+                } else {
+                    bot.go();
+                }
             } else if (bot.isBotEnabled && bot.isBotRunning) {
                 bot.isBotRunning = false;
                 if (window.lastscore && window.lastscore.childNodes[1]) {
