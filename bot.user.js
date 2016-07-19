@@ -359,6 +359,7 @@ var canvasUtil = window.canvasUtil = (function() {
 
 var bot = window.bot = (function() {
     return {
+//        trackTarget: undefined,
         isCustomBot: false,
         isBotRunning: false,
         isBotEnabled: true,
@@ -897,7 +898,6 @@ var bot = window.bot = (function() {
             }
         },
 
-
 ////////////////  custom functions ///////
 
         //follow head of nearest enemy plus some offset to get before enemy's head
@@ -905,8 +905,8 @@ var bot = window.bot = (function() {
           coordinates = {
             //  x: pt.xx,
             //  y: pt.yy,
-              x: pt.xx + Math.cos(ang)*100,
-              y: pt.yy + Math.sin(ang)*100,
+              x: pt.xx + Math.cos(pt.ang)*100,
+              y: pt.yy + Math.sin(pt.ang)*100,
               radius: pt.radius
           };
           if (window.visualDebugging) {
@@ -918,7 +918,7 @@ var bot = window.bot = (function() {
           }
           canvasUtil.setMouseCoordinates(canvasUtil.mapToMouse(coordinates));
         },
-        
+
         testTrack: function(){
             coordinates = {
                 x: window.snake.xx + Math.cos(window.snake.ang)*100,
@@ -933,7 +933,7 @@ var bot = window.bot = (function() {
               'yellow', false);
             }
         },
-            
+
 
 
         getSnakeHeads: function() {
@@ -960,14 +960,54 @@ var bot = window.bot = (function() {
             bot.snakeHeads.sort(bot.sortDistance);
         },
 
+        /*
+        trackOneSnake: function(snake){
+            var enemyHeadPoint = {
+                xx: snake.xx,
+                yy: snake.yy,
+                ang: snake.ang,
+                radius: bot.getSnakeWidth(snake.sc)/2
+            }
+            bot.customTrack(enemyHeadPoint);
+        },
+        //TODO: take care of when target snake dies // and ISSUE when we die bot.trackTarget is not reset
+        getClosestSnake: function(){
+            var closestSnake = undefined;
+            var closestDistance = undefined;
+            for (var snake = 0, ls = window.snakes.length; snake < ls; snake ++) {
+                if (window.snakes[snake].id !== window.snake.id &&
+                    window.snakes[snake].alive_amt === 1) {
+                    enemyHeadPoint = {
+                        xx: window.snakes[snake].xx,
+                        yy: window.snakes[snake].yy
+                    }
+                    canvasUtil.getDistance2FromSnake(enemyHeadPoint);
+                    if (closestDistance === undefined || enemyHeadPoint.distance < closestDistance){
+                        closestDistance = enemyHeadPoint.distance;
+                        closestSnake = window.snakes[snake];
+                    }
+                }
+            }
+            return closestSnake;
+        },
+        */
+
         // Main bot custom
         goCustom: function() {
             bot.every();
+            /*
+            if(bot.trackTarget !== undefined){
+                bot.trackOneSnake(bot.trackTarget);
+            } else {
+                bot.trackTarget = bot.getClosestSnake();
+                console.log(bot.trackTarget);
+            }
+            */
             bot.getSnakeHeads();
             if(bot.snakeHeads[0] !== undefined){
                 bot.customTrack(bot.snakeHeads[0]);
             }
-            //window.setAcceleration(1);
+            window.setAcceleration(1);
         },
 ////////////////// end //////////////////
 
