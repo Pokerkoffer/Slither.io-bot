@@ -903,12 +903,11 @@ var bot = window.bot = (function() {
         //follow head of nearest enemy plus some offset to get before enemy's head
         customTrack: function(pt){
           coordinates = {
-            //  x: pt.xx,
-            //  y: pt.yy,
-              x: pt.xx + Math.cos(pt.ang)*100,
+              x: pt.xx + Math.cos(pt.ang)*100, //TODO: add snake.sc into the formula
               y: pt.yy + Math.sin(pt.ang)*100,
               radius: pt.radius
           };
+            
           if (window.visualDebugging) {
               canvasUtil.drawCircle(canvasUtil.circle(
                   coordinates.x,
@@ -959,53 +958,40 @@ var bot = window.bot = (function() {
             }
             bot.snakeHeads.sort(bot.sortDistance);
         },
-
-        /*
-        trackOneSnake: function(snake){
-            var enemyHeadPoint = {
-                xx: snake.xx,
-                yy: snake.yy,
-                ang: snake.ang,
-                radius: bot.getSnakeWidth(snake.sc)/2
+        
+        //return true if there is a collision point within the circle sector in front of the snake
+        checkSectorCollision: function() {
+            if(window.visualDebugging){
+                var sector = {
+                    O: { x: window.snake.xx,
+                         y: window.snake.yy
+                       },
+                    A: { x: window.snake.xx + Math.cos(window.snake.ang + Math.PI/6)*100,    // TODO: scale by radius not 100
+                         y: window.snake.yy + Math.sin(window.snake.ang + Math.PI/6)*100
+                       },
+                    B: { x: window.snake.xx + Math.cos(window.snake.ang - Math.PI/6)*100,
+                         y: window.snake.yy + Math.sin(window.snake.ang - Math.PI/6)*100
+                       }
+                };
+                console.log({x: sector.A.x, y: sector.A.y});
+                canvasUtil.drawLine({x: sector.O.x, y: sector.O.y},{x: sector.A.x, y: sector.A.y},'#00FF00',1);
+                canvasUtil.drawLine({x: sector.O.x, y: sector.O.y},{x: sector.B.x, y: sector.B.y},'red',1);
             }
-            bot.customTrack(enemyHeadPoint);
+            // TODO: logic for checking if the collision points lie within the circle sector and return true/false
+            // if it returns true it should call the avoid function too 
         },
-        //TODO: take care of when target snake dies // and ISSUE when we die bot.trackTarget is not reset
-        getClosestSnake: function(){
-            var closestSnake = undefined;
-            var closestDistance = undefined;
-            for (var snake = 0, ls = window.snakes.length; snake < ls; snake ++) {
-                if (window.snakes[snake].id !== window.snake.id &&
-                    window.snakes[snake].alive_amt === 1) {
-                    enemyHeadPoint = {
-                        xx: window.snakes[snake].xx,
-                        yy: window.snakes[snake].yy
-                    }
-                    canvasUtil.getDistance2FromSnake(enemyHeadPoint);
-                    if (closestDistance === undefined || enemyHeadPoint.distance < closestDistance){
-                        closestDistance = enemyHeadPoint.distance;
-                        closestSnake = window.snakes[snake];
-                    }
-                }
-            }
-            return closestSnake;
-        },
-        */
 
         // Main bot custom
         goCustom: function() {
             bot.every();
-            /*
-            if(bot.trackTarget !== undefined){
-                bot.trackOneSnake(bot.trackTarget);
-            } else {
-                bot.trackTarget = bot.getClosestSnake();
-                console.log(bot.trackTarget);
-            }
-            */
-            bot.getSnakeHeads();
-            if(bot.snakeHeads[0] !== undefined){
-                bot.customTrack(bot.snakeHeads[0]);
+            
+            bot.checkSectorCollision();
+
+            if(!bot.checkCollision()){
+                bot.getSnakeHeads();
+                if(bot.snakeHeads[0] !== undefined){
+                    bot.customTrack(bot.snakeHeads[0]);
+                }
             }
             window.setAcceleration(1);
         },
