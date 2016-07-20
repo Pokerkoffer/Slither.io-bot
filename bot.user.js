@@ -966,16 +966,15 @@ var bot = window.bot = (function() {
                     O: { x: window.snake.xx,
                          y: window.snake.yy
                        },
-                    A: { x: window.snake.xx + Math.cos(window.snake.ang + Math.PI/6)*100,    // TODO: scale by radius not 100
-                         y: window.snake.yy + Math.sin(window.snake.ang + Math.PI/6)*100
+                    A: { x: window.snake.xx + Math.cos(window.snake.ang + Math.PI/6)* bot.speedMult * bot.opt.radiusMult / 2 * bot.snakeRadius,    
+                         y: window.snake.yy + Math.sin(window.snake.ang + Math.PI/6)* bot.speedMult * bot.opt.radiusMult / 2 * bot.snakeRadius 
                        },
-                    B: { x: window.snake.xx + Math.cos(window.snake.ang - Math.PI/6)*100,
-                         y: window.snake.yy + Math.sin(window.snake.ang - Math.PI/6)*100
+                    B: { x: window.snake.xx + Math.cos(window.snake.ang - Math.PI/6)* bot.speedMult * bot.opt.radiusMult / 2 * bot.snakeRadius,
+                         y: window.snake.yy + Math.sin(window.snake.ang - Math.PI/6)* bot.speedMult * bot.opt.radiusMult / 2 * bot.snakeRadius
                        }
                 };
-                console.log({x: sector.A.x, y: sector.A.y});
                 canvasUtil.drawLine({x: sector.O.x, y: sector.O.y},{x: sector.A.x, y: sector.A.y},'#00FF00',1);
-                canvasUtil.drawLine({x: sector.O.x, y: sector.O.y},{x: sector.B.x, y: sector.B.y},'red',1);
+                canvasUtil.drawLine({x: sector.O.x, y: sector.O.y},{x: sector.B.x, y: sector.B.y},'#00FF00',1);
             }
             // TODO: logic for checking if the collision points lie within the circle sector and return true/false
             // if it returns true it should call the avoid function too 
