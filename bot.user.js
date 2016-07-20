@@ -353,13 +353,39 @@ var canvasUtil = window.canvasUtil = (function() {
                 }
             }
             return false;
+        },
+
+//////////////////////// custom functions ///////////
+
+        //TODO: make this function(sector, circle) instead of pt for better detection
+        sectorIntersect: function(sector, pt){
+            var dx = pt.xx - sector.O.x;
+            var dy = pt.yy - sector.O.y;
+            //check distance
+            var distToPt = Math.sqrt(canvasUtil.getDistance2(sector.O.x, sector.O.y, pt.xx, pt.yy));
+
+            if(distToPt > bot.speedMult * bot.opt.radiusMult/2 * bot.snakeRadius) {
+                return false;
+            } else {
+                //check ang
+                var ptAng = canvasUtil.fastAtan2(dy,dx);
+                if (window.snake.ang > ptAng &&
+                    window.snake.ang - ptAng < Math.PI/6) {
+                    return true;
+                } else if (window.snake.ang < ptAng &&
+                           ptAng - window.snake.ang < Math.PI/6){
+                    return true;
+                }
+                //passes angle check, no collision
+                return false;
+            }
         }
+///////////////////// end custom functions ////////////
     };
 })();
 
 var bot = window.bot = (function() {
     return {
-//        trackTarget: undefined,
         isCustomBot: false,
         isBotRunning: false,
         isBotEnabled: true,
@@ -879,8 +905,7 @@ var bot = window.bot = (function() {
         // Main bot
         go: function() {
             bot.every();
-            
-            bot.testTrack();
+
             if (bot.checkCollision()) {
                 bot.lookForFood = false;
                 if (bot.foodTimeout) {
@@ -897,6 +922,7 @@ var bot = window.bot = (function() {
                 window.setAcceleration(bot.foodAccel());
             }
         },
+
 
 ////////////////  custom functions ///////
 
@@ -958,41 +984,49 @@ var bot = window.bot = (function() {
             }
             bot.snakeHeads.sort(bot.sortDistance);
         },
-        
-        //return true if there is a collision point within the circle sector in front of the snake
+
         checkSectorCollision: function() {
-            if(window.visualDebugging){
-                var sector = {
+            bot.getCollisionPoints();
+            if(bot.collisionPoints.length === 0) return false;
+            var sector = {
                     O: { x: window.snake.xx,
                          y: window.snake.yy
                        },
-                    A: { x: window.snake.xx + Math.cos(window.snake.ang + Math.PI/6)* bot.speedMult * bot.opt.radiusMult / 2 * bot.snakeRadius,    
-                         y: window.snake.yy + Math.sin(window.snake.ang + Math.PI/6)* bot.speedMult * bot.opt.radiusMult / 2 * bot.snakeRadius 
+                    A: { x: window.snake.xx + Math.cos(window.snake.ang + Math.PI/6)* bot.speedMult * bot.opt.radiusMult / 2 * bot.snakeRadius,
+                         y: window.snake.yy + Math.sin(window.snake.ang + Math.PI/6)* bot.speedMult * bot.opt.radiusMult / 2 * bot.snakeRadius
                        },
                     B: { x: window.snake.xx + Math.cos(window.snake.ang - Math.PI/6)* bot.speedMult * bot.opt.radiusMult / 2 * bot.snakeRadius,
                          y: window.snake.yy + Math.sin(window.snake.ang - Math.PI/6)* bot.speedMult * bot.opt.radiusMult / 2 * bot.snakeRadius
                        }
-                };
+            };
+            if(window.visualDebugging){
                 canvasUtil.drawLine({x: sector.O.x, y: sector.O.y},{x: sector.A.x, y: sector.A.y},'#00FF00',1);
                 canvasUtil.drawLine({x: sector.O.x, y: sector.O.y},{x: sector.B.x, y: sector.B.y},'#00FF00',1);
             }
-            // TODO: logic for checking if the collision points lie within the circle sector and return true/false
-            // if it returns true it should call the avoid function too 
+            for(var i = 0; i < bot.collisionPoints.length; i++){
+                if(canvasUtil.sectorIntersect(sector, bot.collisionPoints[i])){
+                    return true;
+                }
+            }
+            // special case snake -1?
+
+            return false
         },
 
         // Main bot custom
         goCustom: function() {
             bot.every();
-            
-            bot.checkSectorCollision();
 
-            if(!bot.checkCollision()){
+            if(bot.checkSectorCollision()){
+                console.log("avoid");
+                //TODO: call avoid
+            } else {
                 bot.getSnakeHeads();
                 if(bot.snakeHeads[0] !== undefined){
                     bot.customTrack(bot.snakeHeads[0]);
                 }
             }
-            window.setAcceleration(1);
+                //window.setAcceleration(1);
         },
 ////////////////// end //////////////////
 
