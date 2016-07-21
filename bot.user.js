@@ -987,6 +987,7 @@ var bot = window.bot = (function() {
 
         checkSectorCollision: function() {
             bot.getCollisionPoints();
+            
             if(bot.collisionPoints.length === 0) return false;
             var sector = {
                     O: { x: window.snake.xx,
@@ -1004,13 +1005,39 @@ var bot = window.bot = (function() {
                 canvasUtil.drawLine({x: sector.O.x, y: sector.O.y},{x: sector.B.x, y: sector.B.y},'#00FF00',1);
             }
             for(var i = 0; i < bot.collisionPoints.length; i++){
-                if(canvasUtil.sectorIntersect(sector, bot.collisionPoints[i])){
-                    return true;
+
+                // snake -1 is special case for non snake object.
+                if (bot.collisionPoints[i].snake !== -1) {
+                    // here is when collisionPoint is another snake
+                    /*
+                    var enemyHeadCircle = canvasUtil.circle(
+                        window.snakes[bot.collisionPoints[i].snake].xx,
+                        window.snakes[bot.collisionPoints[i].snake].yy,
+                        bot.collisionPoints[i].radius
+                    );*/
+                    var enemyHeadCirclePt = { xx: window.snakes[bot.collisionPoints[i].snake].xx,
+                                              yy: window.snakes[bot.collisionPoints[i].snake].yy
+                                            };
+
+                    if (canvasUtil.sectorIntersect(sector, enemyHeadCirclePt)) { 
+                        if (window.snakes[bot.collisionPoints[i].snake].sp > 10) {
+                            window.setAcceleration(1);
+                        } else {
+                            window.setAcceleration(bot.defaultAccel);
+                        }
+                        bot.avoidHeadPoint({
+                            xx: window.snakes[bot.collisionPoints[i].snake].xx,
+                            yy: window.snakes[bot.collisionPoints[i].snake].yy
+                        });
+                        if(window.visualDebugging){
+                            canvasUtil.drawLine({x: sector.O.x, y: sector.O.y},{x: sector.A.x, y: sector.A.y},'red',1);
+                            canvasUtil.drawLine({x: sector.O.x, y: sector.O.y},{x: sector.B.x, y: sector.B.y},'red',1);
+                        }
+                        return true;
+                    }
                 }
             }
-            // special case snake -1?
-
-            return false
+            return false;
         },
 
         // Main bot custom
